@@ -2,21 +2,13 @@ package tls_api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
 
-type ServerHelloTLSRecord struct {
-	RecordLayer        model.RecordLayer
-	HandshakeProtocol  model.HandshakeProtocol
-	Session            model.Session
-	CipherSuite        model.CipherSuite
-	CompressionMethods model.CompressionMethods
-	Extensions         model.Extensions
-}
-
-func parseServerHelloTLSRecord(payload []byte) ServerHelloTLSRecord {
-	var tlsRecord ServerHelloTLSRecord
+func parseServerHelloTLSRecord(payload []byte) model.ServerHelloTLSRecord {
+	var tlsRecord model.ServerHelloTLSRecord
 
 	reader := bytes.NewReader(payload)
 
@@ -48,5 +40,21 @@ func parseServerHelloTLSRecord(payload []byte) ServerHelloTLSRecord {
 		tlsRecord.Extensions.Extensions[extension.Type] = extension
 	}
 
+	tlsRecord.ResolvedServerFields.SupportedVersion = getSupportedVersion(tlsRecord)
+	tlsRecord.ResolvedServerFields.Cipher = getCipher(tlsRecord.CipherSuite)
+
 	return tlsRecord
+}
+
+func getSupportedVersion(record model.ServerHelloTLSRecord) string {
+	var version = model.GetTLSVersion(record.HandshakeProtocol.TLSVersion)
+	extension := record.Extensions.Extensions[model.TLSVersionExt]
+	if extension.Value != nil {
+		version = model.GetTLSVersion(binary.BigEndian.Uint16(extension.Value))
+	}
+	return version
+}
+
+func getCipher(cipher model.CipherSuite) string {
+	return tls.CipherSuiteName(cipher.Value)
 }

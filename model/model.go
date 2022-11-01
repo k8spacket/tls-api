@@ -47,17 +47,63 @@ type ServerNameExtension struct {
 	ListLength uint16
 	Type       uint8
 	Length     uint16
-	Value      []byte
+	Value      string
+}
+
+type SupportedVersionExtension struct {
+	Type  uint16
+	Value []byte
+}
+
+type SupportedVersionsExtension struct {
+	SupportedVersionLength uint8
+	Value                  []string
+}
+
+type ClientCiphers struct {
+	Ciphers []string
+}
+
+type ResolvedClientFields struct {
+	ServerName        string
+	SupportedVersions []string
+	Ciphers           []string
+}
+
+type ClientHelloTLSRecord struct {
+	RecordLayer          RecordLayer
+	HandshakeProtocol    HandshakeProtocol
+	Session              Session
+	Ciphers              Ciphers
+	CompressionMethods   CompressionMethods
+	Extensions           Extensions
+	ResolvedClientFields ResolvedClientFields
+}
+
+type ResolvedServerFields struct {
+	SupportedVersion string
+	Cipher           string
+}
+
+type ServerHelloTLSRecord struct {
+	RecordLayer          RecordLayer
+	HandshakeProtocol    HandshakeProtocol
+	Session              Session
+	CipherSuite          CipherSuite
+	CompressionMethods   CompressionMethods
+	Extensions           Extensions
+	ResolvedServerFields ResolvedServerFields
 }
 
 const (
 	TLSRecord byte = 0x16
 
-	ClientHelloTLSRecord byte = 0x01
-	ServerHelloTLSRecord byte = 0x02
+	ClientHelloTLS byte = 0x01
+	ServerHelloTLS byte = 0x02
 
-	ServerNameExt uint16 = 0x00
-	TLSVersionExt uint16 = 0x2b
+	ServerNameExt        uint16 = 0x0000
+	SupportedVersionsExt uint16 = 0x002b
+	TLSVersionExt        uint16 = 0x002b
 )
 
 var tlsVersions = map[uint16]string{

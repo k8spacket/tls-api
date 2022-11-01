@@ -18,7 +18,7 @@ var clientTestData = []byte{22, 3, 1, 1, 58, 1, 0, 1, 54, 3, 3, 72, 77, 252, 35,
 	0, 25, 0, 13, 0, 24, 0, 22, 8, 6, 6, 1, 6, 3, 8, 5, 5, 1, 5, 3, 8, 4, 4, 1, 4, 3, 2, 1, 2, 3, 0, 16, 0, 14, 0, 12, 2, 104, 50, 8,
 	104, 116, 116, 112, 47, 49, 46, 49}
 
-var clientExpectedResult = ClientHelloTLSRecord{
+var clientExpectedResult = model.ClientHelloTLSRecord{
 	RecordLayer: model.RecordLayer{
 		HandshakeType: 0x0016,
 		TLSVersion:    0x0301,
@@ -82,6 +82,65 @@ var clientExpectedResult = ClientHelloTLSRecord{
 			},
 		},
 	},
+	ResolvedClientFields: model.ResolvedClientFields{
+		ServerName: "google.pl",
+		SupportedVersions: []string{
+			"TLS 1.3",
+			"TLS 1.2",
+			"TLS 1.1",
+			"TLS 1.0",
+		},
+		Ciphers: []string{
+			"TLS_CHACHA20_POLY1305_SHA256",
+			"TLS_AES_256_GCM_SHA384",
+			"TLS_AES_128_GCM_SHA256",
+			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+			"0xCCAA",
+			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+			"0xC028", "0xC024",
+			"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+			"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+			"0x009F",
+			"0x006B",
+			"0x0039",
+			"0xFF85",
+			"0x00C4",
+			"0x0088",
+			"0x0081",
+			"TLS_RSA_WITH_AES_256_GCM_SHA384",
+			"0x003D",
+			"TLS_RSA_WITH_AES_256_CBC_SHA",
+			"0x00C0",
+			"0x0084",
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+			"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+			"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+			"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+			"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
+			"0x009E",
+			"0x0067",
+			"0x0033",
+			"0x00BE",
+			"0x0045",
+			"TLS_RSA_WITH_AES_128_GCM_SHA256",
+			"TLS_RSA_WITH_AES_128_CBC_SHA256",
+			"TLS_RSA_WITH_AES_128_CBC_SHA",
+			"0x00BA",
+			"0x0041",
+			"TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+			"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
+			"TLS_RSA_WITH_RC4_128_SHA",
+			"0x0004",
+			"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+			"0xC008",
+			"0x0016",
+			"TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+			"0x00FF",
+		},
+	},
 }
 
 var serverTestData = []byte{22, 3, 3, 0, 122, 2, 0, 0, 118, 3, 3, 23, 117, 135, 200, 11, 134, 69, 35, 63, 40, 219, 3, 223,
@@ -119,7 +178,7 @@ var serverTestData = []byte{22, 3, 3, 0, 122, 2, 0, 0, 118, 3, 3, 23, 117, 135, 
 	96, 81, 101, 18, 52, 200, 193, 81, 64, 174, 7, 37, 102, 97, 90, 232, 164, 96, 69, 63, 110, 77, 238, 77, 216, 188, 204, 39,
 	221, 86, 236, 135, 18, 171, 77, 109, 156, 122, 87, 38, 86, 154}
 
-var serverExpectedResult = ServerHelloTLSRecord{
+var serverExpectedResult = model.ServerHelloTLSRecord{
 	RecordLayer: model.RecordLayer{
 		HandshakeType: 0x16,
 		TLSVersion:    0x303,
@@ -161,10 +220,14 @@ var serverExpectedResult = ServerHelloTLSRecord{
 			},
 		},
 	},
+	ResolvedServerFields: model.ResolvedServerFields{
+		SupportedVersion: "TLS 1.3",
+		Cipher:           "TLS_CHACHA20_POLY1305_SHA256",
+	},
 }
 
 func TestClientHelloTLSRecord(t *testing.T) {
-	var got = ParseTLSPayload(clientTestData).(ClientHelloTLSRecord)
+	var got = ParseTLSPayload(clientTestData).(model.ClientHelloTLSRecord)
 	var want = clientExpectedResult
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("TLS ClientHello packet processing failed:\ngot:\n%#v\n\nwant:\n%#v\n\n", got, want)
@@ -172,7 +235,7 @@ func TestClientHelloTLSRecord(t *testing.T) {
 }
 
 func TestServerHelloTLSRecord(t *testing.T) {
-	var got = ParseTLSPayload(serverTestData).(ServerHelloTLSRecord)
+	var got = ParseTLSPayload(serverTestData).(model.ServerHelloTLSRecord)
 	var want = serverExpectedResult
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("TLS ServerHello packet processing failed:\ngot:\n%#v\n\nwant:\n%#v\n\n", got, want)

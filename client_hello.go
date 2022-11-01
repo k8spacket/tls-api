@@ -2,21 +2,13 @@ package tls_api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
 
-type ClientHelloTLSRecord struct {
-	RecordLayer        model.RecordLayer
-	HandshakeProtocol  model.HandshakeProtocol
-	Session            model.Session
-	Ciphers            model.Ciphers
-	CompressionMethods model.CompressionMethods
-	Extensions         model.Extensions
-}
-
-func parseClientHelloTLSRecord(payload []byte) ClientHelloTLSRecord {
-	var tlsRecord ClientHelloTLSRecord
+func parseClientHelloTLSRecord(payload []byte) model.ClientHelloTLSRecord {
+	var tlsRecord model.ClientHelloTLSRecord
 
 	reader := bytes.NewReader(payload)
 
@@ -51,5 +43,53 @@ func parseClientHelloTLSRecord(payload []byte) ClientHelloTLSRecord {
 		tlsRecord.Extensions.Extensions[extension.Type] = extension
 	}
 
+	tlsRecord.ResolvedClientFields.ServerName = getServerName(tlsRecord.Extensions).Value
+	tlsRecord.ResolvedClientFields.SupportedVersions = getSupportedVersions(tlsRecord.Extensions).Value
+	tlsRecord.ResolvedClientFields.Ciphers = getCiphers(tlsRecord.Ciphers)
+
 	return tlsRecord
+}
+
+func getServerName(record model.Extensions) model.ServerNameExtension {
+	extension := record.Extensions[model.ServerNameExt]
+
+	var serverNameExtension model.ServerNameExtension
+
+	reader := bytes.NewReader(extension.Value)
+	binary.Read(reader, binary.BigEndian, &serverNameExtension.ListLength)
+	binary.Read(reader, binary.BigEndian, &serverNameExtension.Type)
+	binary.Read(reader, binary.BigEndian, &serverNameExtension.Length)
+	serverNameValue := make([]byte, serverNameExtension.Length)
+	binary.Read(reader, binary.BigEndian, &serverNameValue)
+	serverNameExtension.Value = string(serverNameValue)
+
+	return serverNameExtension
+}
+
+func getSupportedVersions(record model.Extensions) model.SupportedVersionsExtension {
+	extension := record.Extensions[model.SupportedVersionsExt]
+
+	var supportedVersionsExtension model.SupportedVersionsExtension
+
+	reader := bytes.NewReader(extension.Value)
+	binary.Read(reader, binary.BigEndian, &supportedVersionsExtension.SupportedVersionLength)
+	print(supportedVersionsExtension.SupportedVersionLength)
+	supportedVersionValue := make([]byte, 2)
+	for i := 0; i < int(supportedVersionsExtension.SupportedVersionLength/2); i++ {
+		binary.Read(reader, binary.BigEndian, &supportedVersionValue)
+		supportedVersionsExtension.Value = append(supportedVersionsExtension.Value, model.GetTLSVersion(binary.BigEndian.Uint16(supportedVersionValue)))
+	}
+
+	return supportedVersionsExtension
+}
+
+func getCiphers(ciphers model.Ciphers) []string {
+	reader := bytes.NewReader(ciphers.Value)
+	cipherValue := make([]byte, 2)
+	var result []string
+	for i := 0; i < int(ciphers.Length/2); i++ {
+		binary.Read(reader, binary.BigEndian, cipherValue)
+		result = append(result, tls.CipherSuiteName(binary.BigEndian.Uint16(cipherValue)))
+	}
+	return result
 }
