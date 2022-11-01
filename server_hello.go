@@ -2,7 +2,6 @@ package tls_api
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
@@ -56,5 +55,5 @@ func getSupportedVersion(record model.ServerHelloTLSRecord) string {
 }
 
 func getCipher(cipher model.CipherSuite) string {
-	return tls.CipherSuiteName(cipher.Value)
+	return model.GetCipherSuite(cipher.Value)
 }

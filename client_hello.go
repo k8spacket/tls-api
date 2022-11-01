@@ -2,7 +2,6 @@ package tls_api
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
@@ -89,7 +88,7 @@ func getCiphers(ciphers model.Ciphers) []string {
 	var result []string
 	for i := 0; i < int(ciphers.Length/2); i++ {
 		binary.Read(reader, binary.BigEndian, cipherValue)
-		result = append(result, tls.CipherSuiteName(binary.BigEndian.Uint16(cipherValue)))
+		result = append(result, model.GetCipherSuite(binary.BigEndian.Uint16(cipherValue)))
 	}
 	return result
 }
