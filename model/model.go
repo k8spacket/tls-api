@@ -1,5 +1,7 @@
 package model
 
+import "crypto/x509"
+
 type RecordLayer struct {
 	HandshakeType uint8
 	TLSVersion    uint16
@@ -71,7 +73,6 @@ type ResolvedClientFields struct {
 }
 
 type ClientHelloTLSRecord struct {
-	RecordLayer          RecordLayer
 	HandshakeProtocol    HandshakeProtocol
 	Session              Session
 	Ciphers              Ciphers
@@ -86,7 +87,6 @@ type ResolvedServerFields struct {
 }
 
 type ServerHelloTLSRecord struct {
-	RecordLayer          RecordLayer
 	HandshakeProtocol    HandshakeProtocol
 	Session              Session
 	CipherSuite          CipherSuite
@@ -95,11 +95,25 @@ type ServerHelloTLSRecord struct {
 	ResolvedServerFields ResolvedServerFields
 }
 
+type CertificateTLSRecord struct {
+	HandshakeType            uint8
+	CertificateMessageLength [3]byte
+	CertificatesLength       [3]byte
+	Certificates             []x509.Certificate
+}
+
+type TLSWrapper struct {
+	ClientHelloTLSRecord ClientHelloTLSRecord
+	ServerHelloTLSRecord ServerHelloTLSRecord
+	CertificateTLSRecord CertificateTLSRecord
+}
+
 const (
 	TLSRecord byte = 0x16
 
 	ClientHelloTLS byte = 0x01
 	ServerHelloTLS byte = 0x02
+	CertificateTLS byte = 0x0b
 
 	ServerNameExt        uint16 = 0x0000
 	SupportedVersionsExt uint16 = 0x002b

@@ -1,17 +1,14 @@
 package tls_api
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
 
-func parseServerHelloTLSRecord(payload []byte) model.ServerHelloTLSRecord {
+func parseServerHelloTLSRecord(reader *bufio.Reader) model.ServerHelloTLSRecord {
 	var tlsRecord model.ServerHelloTLSRecord
 
-	reader := bytes.NewReader(payload)
-
-	binary.Read(reader, binary.BigEndian, &tlsRecord.RecordLayer)
 	binary.Read(reader, binary.BigEndian, &tlsRecord.HandshakeProtocol)
 
 	binary.Read(reader, binary.BigEndian, &tlsRecord.Session.Length)
@@ -29,7 +26,8 @@ func parseServerHelloTLSRecord(payload []byte) model.ServerHelloTLSRecord {
 	binary.Read(reader, binary.BigEndian, &tlsRecord.Extensions.Length)
 
 	tlsRecord.Extensions.Extensions = make(map[uint16]model.Extension)
-	for reader.Len() > 0 {
+	var lengthCounter = 0
+	for int(tlsRecord.Extensions.Length)-lengthCounter > 0 {
 		var extension model.Extension
 		binary.Read(reader, binary.BigEndian, &extension.Type)
 		binary.Read(reader, binary.BigEndian, &extension.Length)
@@ -37,6 +35,7 @@ func parseServerHelloTLSRecord(payload []byte) model.ServerHelloTLSRecord {
 		binary.Read(reader, binary.BigEndian, &extensionValue)
 		extension.Value = extensionValue
 		tlsRecord.Extensions.Extensions[extension.Type] = extension
+		lengthCounter += int(extension.Length) + 4
 	}
 
 	tlsRecord.ResolvedServerFields.SupportedVersion = getSupportedVersion(tlsRecord)
