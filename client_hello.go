@@ -1,17 +1,15 @@
 package tls_api
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"github.com/k8spacket/tls-api/model"
 )
 
-func parseClientHelloTLSRecord(payload []byte) model.ClientHelloTLSRecord {
+func parseClientHelloTLSRecord(reader *bufio.Reader) model.ClientHelloTLSRecord {
 	var tlsRecord model.ClientHelloTLSRecord
 
-	reader := bytes.NewReader(payload)
-
-	binary.Read(reader, binary.BigEndian, &tlsRecord.RecordLayer)
 	binary.Read(reader, binary.BigEndian, &tlsRecord.HandshakeProtocol)
 
 	binary.Read(reader, binary.BigEndian, &tlsRecord.Session.Length)
@@ -32,7 +30,9 @@ func parseClientHelloTLSRecord(payload []byte) model.ClientHelloTLSRecord {
 	binary.Read(reader, binary.BigEndian, &tlsRecord.Extensions.Length)
 
 	tlsRecord.Extensions.Extensions = make(map[uint16]model.Extension)
-	for reader.Len() > 0 {
+
+	var lengthCounter = 0
+	for int(tlsRecord.Extensions.Length)-lengthCounter > 0 {
 		var extension model.Extension
 		binary.Read(reader, binary.BigEndian, &extension.Type)
 		binary.Read(reader, binary.BigEndian, &extension.Length)
@@ -40,10 +40,11 @@ func parseClientHelloTLSRecord(payload []byte) model.ClientHelloTLSRecord {
 		binary.Read(reader, binary.BigEndian, &extensionValue)
 		extension.Value = extensionValue
 		tlsRecord.Extensions.Extensions[extension.Type] = extension
+		lengthCounter += int(extension.Length) + 4
 	}
 
 	tlsRecord.ResolvedClientFields.ServerName = getServerName(tlsRecord.Extensions).Value
-	tlsRecord.ResolvedClientFields.SupportedVersions = getSupportedVersions(tlsRecord.Extensions).Value
+	tlsRecord.ResolvedClientFields.SupportedVersions = getSupportedVersions(tlsRecord).Value
 	tlsRecord.ResolvedClientFields.Ciphers = getCiphers(tlsRecord.Ciphers)
 
 	return tlsRecord
@@ -65,18 +66,21 @@ func getServerName(record model.Extensions) model.ServerNameExtension {
 	return serverNameExtension
 }
 
-func getSupportedVersions(record model.Extensions) model.SupportedVersionsExtension {
-	extension := record.Extensions[model.SupportedVersionsExt]
+func getSupportedVersions(tlsRecord model.ClientHelloTLSRecord) model.SupportedVersionsExtension {
+	extension := tlsRecord.Extensions.Extensions[model.SupportedVersionsExt]
 
 	var supportedVersionsExtension model.SupportedVersionsExtension
 
 	reader := bytes.NewReader(extension.Value)
 	binary.Read(reader, binary.BigEndian, &supportedVersionsExtension.SupportedVersionLength)
-	print(supportedVersionsExtension.SupportedVersionLength)
-	supportedVersionValue := make([]byte, 2)
-	for i := 0; i < int(supportedVersionsExtension.SupportedVersionLength/2); i++ {
-		binary.Read(reader, binary.BigEndian, &supportedVersionValue)
-		supportedVersionsExtension.Value = append(supportedVersionsExtension.Value, model.GetTLSVersion(binary.BigEndian.Uint16(supportedVersionValue)))
+	if supportedVersionsExtension.SupportedVersionLength > 0 {
+		supportedVersionValue := make([]byte, 2)
+		for i := 0; i < int(supportedVersionsExtension.SupportedVersionLength/2); i++ {
+			binary.Read(reader, binary.BigEndian, &supportedVersionValue)
+			supportedVersionsExtension.Value = append(supportedVersionsExtension.Value, model.GetTLSVersion(binary.BigEndian.Uint16(supportedVersionValue)))
+		}
+	} else {
+		supportedVersionsExtension.Value = append(supportedVersionsExtension.Value, model.GetTLSVersion(tlsRecord.HandshakeProtocol.TLSVersion))
 	}
 
 	return supportedVersionsExtension
